@@ -183,6 +183,16 @@ shinyServer(function(input, output) {
                }
              })
              
+             chby95 <- ddply(dfx, .(sampleNum), function(dfx) {
+               if(dfx$nUncen[1] <3){
+                 return(NA)
+                 
+                 
+               }else{
+                 chebyUCL(dfx$obs, dfx$cen)
+               }
+             })
+             
              # Durant's method. Uses ROS + a limiting factor for GSD:
             
             dur.ros <- dlply(dfx, .(sampleNum), function(dfx){
@@ -221,7 +231,8 @@ shinyServer(function(input, output) {
                                   Gamma = gamma.envStat.UCL$V1,
                                   LogNormal=ln.envStat.UCL$V1,
                                   Normal=norm.envStat.UCL$V1,
-                                  CoxLand = CoxLand.UCL$V1
+                                  CoxLand = CoxLand.UCL$V1,
+                                  cheby95 = chby95$V1
              )
              
              
@@ -270,6 +281,17 @@ shinyServer(function(input, output) {
             ln.UCL.rMedSe <- sqrt(median(se(pop.mean, 
                                             ln.envStat.UCL$V1[!is.na(ln.envStat.UCL$V1)])))
             
+            cheby95.UCL.coverage <- mean(chby95$V1 >=pop.mean, na.rm=TRUE)
+            cheby95.UCL.rope.coverage <- mean(chby95$V1 >=pop.mean * input$ROPE, na.rm=TRUE)
+            cheby95.UCL.miss <- 1 - mean(chby95$V1[chby95$V1 < pop.mean]/pop.mean, na.rm=TRUE)
+            cheby95.UCL.bias <- sum((chby95$V1 - pop.mean) / 
+                                         pop.mean, na.rm=TRUE) / 
+              length(chby95$V1[!is.na(chby95$V1)])
+            cheby95.UCL.rmse <-  rmse(pop.mean, 
+                                      chby95$V1[!is.na(chby95$V1)])
+            cheby95.UCL.rMedSe <- sqrt(median(se(pop.mean, 
+                                            chby95$V1[!is.na(chby95$V1)])))
+            
             
             rec.UCL.coverage <- mean(rec.df$rec.UCL >=pop.mean, na.rm=TRUE)
             rec.UCL.rope.coverage <- mean(rec.df$rec.UCL >=pop.mean * input$ROPE, na.rm=TRUE)
@@ -304,8 +326,10 @@ shinyServer(function(input, output) {
                                       ln.envStat.UCL.coverage,
                                       norm.envStat.UCL.coverage,
                                       rec.UCL.coverage,
-                                      CoxLand.UCL.coverage)
-             names(envStat.UCL.coverage) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "Cox.Lands")
+                                      CoxLand.UCL.coverage,
+                                      cheby95.UCL.coverage)
+             names(envStat.UCL.coverage) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "Cox.Lands", 
+                                              "Cheby95")
              print(envStat.UCL.coverage)
             
             
@@ -313,8 +337,10 @@ shinyServer(function(input, output) {
                                      ln.envStat.UCL.rope.coverage,
                                      norm.envStat.UCL.rope.coverage,
                                      rec.UCL.rope.coverage,
-                                     CoxLand.UCL.rope.coverage)
-            names(envStat.UCL.rope.coverage) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "Cox.Lands")
+                                     CoxLand.UCL.rope.coverage,
+                                     cheby95.UCL.rope.coverage)
+            names(envStat.UCL.rope.coverage) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", 
+                                                  "Cox.Lands", "Cheby95")
             print(envStat.UCL.rope.coverage)
             
             
@@ -322,33 +348,41 @@ shinyServer(function(input, output) {
                                   ln.envStat.UCL.bias,
                                   norm.envStat.UCL.bias,
                                   rec.UCL.bias,
-                                  CoxLand.UCL.bias)
+                                  CoxLand.UCL.bias,
+                                  cheby95.UCL.bias)
             
-            names(envStat.UCL.bias) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "Cox.Lands")
+            names(envStat.UCL.bias) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "Cox.Lands",
+                                         "Cheby95")
             print(envStat.UCL.bias)
             
             envStat.UCL.rmse <- c(gamma.envStat.UCL.rmse/pop.mean,
                                   ln.envStat.UCL.rmse/pop.mean,
                                   norm.envStat.UCL.rmse/pop.mean,
                                   rec.UCL.rmse/pop.mean,
-                                  CoxLand.UCL.rmse/pop.mean)
-            names(envStat.UCL.rmse) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "CoxLands")
+                                  CoxLand.UCL.rmse/pop.mean,
+                                  cheby95.UCL.rmse/pop.mean)
+            names(envStat.UCL.rmse) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "CoxLands",
+                                         "Cheby95")
             print(envStat.UCL.rmse)
             
             envStat.UCL.miss <- c(gamma.envStat.UCL.miss,
                                   ln.envStat.UCL.miss,
                                   norm.envStat.UCL.miss,
                                   rec.UCL.miss,
-                                  CoxLand.UCL.miss)
-            names(envStat.UCL.miss) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "COxLands")
+                                  CoxLand.UCL.miss,
+                                  cheby95.UCL.miss)
+            names(envStat.UCL.miss) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "COxLands",
+                                         "Cheby95")
             print(envStat.UCL.miss)
             
             RMedSE <- c(gamma.UCL.rMedSe/pop.mean,
                         ln.UCL.rMedSe/pop.mean,
                         norm.UCL.rMedSe/pop.mean,
                         rec.UCL.rMedSe/pop.mean,
-                        CoxLand.UCL.rMedSe/pop.mean)
-            names(RMedSE) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "COxLands")
+                        CoxLand.UCL.rMedSe/pop.mean,
+                        cheby95.UCL.rMedSe/pop.mean)
+            names(RMedSE) <- c("Gamma", "Log-Normal", "Normal", "Rec. UCL", "COxLands",
+                               "Cheby95")
             print(RMedSE)
 
 # Bayesian ----------------------------------------------------------------

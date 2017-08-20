@@ -299,3 +299,25 @@ gatherResults <- function(path.glob, header=TRUE) {
                 normalizePath(Sys.glob(path.glob)),
                 header)))
 }
+
+
+chebyUCL = function(obs, cen, alpha = 0.05){
+  require(EnvStats)
+  stopifnot(is.numeric(obs))
+  stopifnot(is.logical(cen))
+  stopifnot(is.numeric(alpha))
+  stopifnot(alpha < 1 )
+  stopifnot(alpha > 0 )
+  if(any(cen)){
+  estimates <- enparCensored(x = obs, censored = cen)
+  xbar <- estimates$parameters[[1]]
+  sd <- estimates$parameters[[2]]
+  n <- estimates$sample.size
+  }else{
+    xbar <- mean(obs)
+    sd = sd(obs)
+    n = length(obs)
+  }
+  UCL_cheb <- xbar + sqrt((1/alpha)-1) * sd / sqrt(n-1)
+  return(UCL_cheb)
+}
